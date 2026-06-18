@@ -4,6 +4,8 @@ import java.io.IOException;
 public class Logger {
 
     private String TRANSITIONS_LOG_PATH = "logs\\transitions_log.txt";
+    private String DEBUG_TRANSITIONS_LOG_PATH = "logs\\debug_transitions_log.txt";
+    private long startingTime;
 
     public Logger() {
         // Clear the transitions log file at the beginning of the program.
@@ -22,6 +24,24 @@ public class Logger {
                 }
             }
         }
+        // Clear the debug transitions log file at the beginning of the program.
+        fileWriter = null;
+        try {
+            fileWriter = new FileWriter(DEBUG_TRANSITIONS_LOG_PATH, false);
+            fileWriter.write("");
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (fileWriter != null) {
+                try {
+                    fileWriter.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        // Set the starting time of the program to calculate the elapsed time for logging purposes.
+        startingTime = System.currentTimeMillis();
     }
 
     /*
@@ -29,10 +49,27 @@ public class Logger {
      * @param transition The index of the fired transition.
      */
     public synchronized void logTransitionFiring(int transition) {
+        // Log the firing of the transition to the transitions log file.
         FileWriter fileWriter = null;
         try {
             fileWriter = new FileWriter(TRANSITIONS_LOG_PATH, true);
-            fileWriter.write(String.format("T%d %s\n", transition, Thread.currentThread().getName()));
+            fileWriter.write(String.format("T%d", transition));
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (fileWriter != null) {
+                try {
+                    fileWriter.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        // Log the firing of the transition to the debug transitions log file, with more details like threads name and elapsed time for debugging purposes.
+        fileWriter = null;
+        try {
+            fileWriter = new FileWriter(DEBUG_TRANSITIONS_LOG_PATH, true);
+            fileWriter.write(String.format("T%d %s %s\n", transition, Thread.currentThread().getName(), System.currentTimeMillis() - startingTime));
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
