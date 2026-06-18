@@ -21,7 +21,11 @@ public class PetriNet {
                                                     {  0,  0,  0,  0, -1,  1, -1,  0,  1,  0 },   // P8
                                                     {  0,  0,  0,  1,  0,  1,  0,  0,  1, -1 } }; // P9;
 
-    public PetriNet() { }
+    private Logger logger;
+
+    public PetriNet(Logger logger) {
+        this.logger = logger;
+    }
 
     public boolean fireTransition(int transition) {
         // Check if the transition is enabled, which means that for each place, the number of tokens in the place is greater than or equal to the number of tokens required by the transition to fire.
@@ -34,6 +38,8 @@ public class PetriNet {
         for (int i = 0; i < marking.length; i++) {
             marking[i] += incidenceMatrix[i][transition];
         }
+        // Log the firing of the transition and the new marking of the petri net.
+        logger.logTransitionFiring(transition, marking);
         return true;
     }
 

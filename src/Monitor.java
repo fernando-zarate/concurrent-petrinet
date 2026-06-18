@@ -43,43 +43,45 @@ public class Monitor implements MonitorInterface {
         try {
             mutex.acquire();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             return false;
         }
         // Try to execute he main loop of the monitor.
-        try {
-            boolean k = true;
-            while (k) {
-                k = petriNet.fireTransition(transition);
-                if (k) {
-                    boolean[] vs = petriNet.getSensitizedTransitions();
-                    boolean[] vc = getWaitingTransitions();
-                    boolean[] m = compareArrays(vs, vc);
-                    if (containsTrue(m)) {
-                        int transitionToFire = politic.selectTransition(m);
-                        // We wake up the sleeping thread by releasing ITS private semaphore. Passing the Baton: We do NOT release the main 'mutex' here. The awakened thread will inherit the lock and continue executing inside the monitor, without needing to acquire the 'mutex' again.
-                        waitingThreads[transitionToFire].release();
-                        // We exit the method WITHOUT releasing the main 'mutex'. The awakened thread inherits the lock automatically.
-                        return true;
-                    } else {
-                        // No one to wake up, we just exit the loop.
-                        k = false;
-                    }
+        boolean k = true;
+        while (k) {
+            k = petriNet.fireTransition(transition);
+            if (k) {
+                boolean[] vs = petriNet.getSensitizedTransitions();
+                boolean[] vc = getWaitingTransitions();
+                boolean[] m = compareArrays(vs, vc);
+                if (containsTrue(m)) {
+                    int transitionToFire = politic.selectTransition(m);
+                    // We wake up the sleeping thread by releasing ITS private semaphore. Passing the Baton: We do NOT release the main 'mutex' here. The awakened thread will inherit the lock and continue executing inside the monitor, without needing to acquire the 'mutex' again.
+                    waitingThreads[transitionToFire].release();
+                    // We exit the method WITHOUT releasing the main 'mutex'. The awakened thread inherits the lock automatically.
+                    return true;
                 } else {
-                    // Transition not enabled. We must go to sleep. Increment the waiter count for this transition.
-                    waitingCount[transition]++;
-                    // We release the main door so other threads can enter the monitor.
-                    mutex.release();
+                    // No one to wake up, we just exit the loop.
+                    k = false;
+                }
+            } else {
+                // Transition not enabled. We must go to sleep. Increment the waiter count for this transition.
+                waitingCount[transition]++;
+                // We release the main door so other threads can enter the monitor.
+                mutex.release();
+                try {
                     // We go to sleep on our private semaphore.
                     waitingThreads[transition].acquire();
                     // HERE WAKES UP THE THREAD. We decrement the waiter count for this transition.
                     waitingCount[transition]--;
                     // Loop again to try firing.
                     k = true;
+                } catch (InterruptedException e) {
+                    //e.printStackTrace();
+                    waitingCount[transition]--;
+                    return false;
                 }
             }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
         }
         // This release is ONLY executed if the thread is leaving the monitor without waking anyone else up (when k = false).
         mutex.release();

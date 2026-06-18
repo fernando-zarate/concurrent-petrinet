@@ -1,5 +1,6 @@
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class Logger {
 
@@ -48,8 +49,9 @@ public class Logger {
     /*
      * Logs the firing of a transition to a file.
      * @param transition The index of the fired transition.
+     * @param marking The current marking of the petri net.
      */
-    public synchronized void logTransitionFiring(int transition) {
+    public synchronized void logTransitionFiring(int transition, int[] marking) {
         // Log the firing of the transition to the transitions log file.
         FileWriter fileWriter = null;
         try {
@@ -70,7 +72,7 @@ public class Logger {
         fileWriter = null;
         try {
             fileWriter = new FileWriter(DEBUG_TRANSITIONS_LOG_PATH, true);
-            fileWriter.write(String.format("T%d %s %s\n", transition, Thread.currentThread().getName(), System.currentTimeMillis() - startingTime));
+            fileWriter.write(String.format("T%d %s %s %d\n", transition, Arrays.toString(marking), Thread.currentThread().getName(), System.currentTimeMillis() - startingTime));
         } catch (IOException e) {
             e.printStackTrace();
         } finally {

@@ -16,14 +16,17 @@ public class Main {
 
     public static void main(String[] args) {
         Logger logger = new Logger();
-        PetriNet petriNet = new PetriNet();
+        PetriNet petriNet = new PetriNet(logger);
         Politic politic = new Politic();
         Monitor monitor = new Monitor(petriNet, politic);
-        // Create the segments based on the SEGMENTS_SETUP configuration.
+        // Create the segments based on the SEGMENTS_SETUP configuration and the transitions of the petri net.
         ArrayList<Segment> segments = new ArrayList<>();
+        int[] transitionCounters = new int[petriNet.getIncidenceMatrix()[0].length];
+        boolean[] segmentsRunning = new boolean[SEGMENTS_SETUP.length];
         for (int i = 0; i < SEGMENTS_SETUP.length; i++) {
+            segmentsRunning[i] = true;
             for (int j = 0; j < SEGMENTS_SETUP[i][0][0]; j++) {
-                segments.add(new Segment(monitor, SEGMENTS_SETUP[i][1], logger));
+                segments.add(new Segment(i, transitionCounters, segmentsRunning, SEGMENTS_SETUP[i][1], monitor));
             }
         }
         // Create a thread for each segment and start all of them.
@@ -33,7 +36,20 @@ public class Main {
             threads.add(thread);
             thread.start();
         }
-        System.out.printf("All threads have been started.\n");
+        System.out.printf("THREAD-MAIN: All threads have been started.\n");
+        // Wait for the first and last thread to finish.
+        while (segmentsRunning[segmentsRunning.length - 1] == true) {
+            try {
+                Thread.sleep(50); // Dormimos 50ms para no consumir CPU en vano
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.printf("THREAD-MAIN: Network drained. Interrupting sleeping threads...\n");
+        // Interrupt all others threads just in case they are still running.
+        for (Thread thread : threads) {
+            thread.interrupt();
+        }
         // Wait for all threads to finish.
         for (Thread thread : threads) {
             try {
@@ -42,6 +58,6 @@ public class Main {
                 e.printStackTrace();
             }
         }
-        System.out.printf("All threads have finished.\n");
+        System.out.printf("THREAD-MAIN: All threads have finished.\n");
     }
 }
