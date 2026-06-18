@@ -3,8 +3,9 @@ import java.io.IOException;
 
 public class Logger {
 
-    private String TRANSITIONS_LOG_PATH = "logs\\transitions_log.txt";
-    private String DEBUG_TRANSITIONS_LOG_PATH = "logs\\debug_transitions_log.txt";
+    private static final String TRANSITIONS_LOG_PATH = "logs\\transitions_log.txt";
+    private static final String DEBUG_TRANSITIONS_LOG_PATH = "logs\\debug_transitions_log.txt";
+    
     private long startingTime;
 
     public Logger() {

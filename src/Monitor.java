@@ -1,26 +1,23 @@
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.Semaphore;
 
 public class Monitor implements MonitorInterface {
 
     /*
-     * A reentrant lock for synchronizing access to the monitor.
-     * This is used to ensure that only one thread can access the monitor at a time, and to avoid race conditions when multiple threads are trying to fire transitions or wait for transitions to fire.
+     * The main mutex semaphore to guarantee mutual exclusion. 
+     * Initialized to 1, meaning the monitor is free.
      */
-    private ReentrantLock monitorLock;
+    private Semaphore mutex;
 
     /*
-     * An array of conditions for each transition in the petri net, where each condition is used to manage the threads that are waiting for that transition to fire.
-     * Class monitor not knows how many transitions there are, so it can be any number of transitions, and each transition can have any number of threads waiting for it.
-     * When a Thread ask to fire a transition, if the transition is not enabled, the thread is added in the waitingThreads list and is set to sleep.
-     * 
-     * e.g.:
-     * [Transition_0 = [Thread_0, Thread_1, ..., Thread_n]],
-     * [Transition_1 = [Thread_2, Thread_3, ..., Thread_m]],
-     * ...
-     * [Transition_k = [Thread_p, Thread_q, ..., Thread_r]]
+     * An array of private semaphores. Each transition has its own semaphore initialized to 0.
+     * Threads will block here (acquire) when their transition is not sensitized.
      */
-    private Condition[] waitingThreads;
+    private Semaphore[] waitingThreads;
+
+    /*
+     * An array to manually keep track of how many threads are waiting in each private semaphore.
+     */
+    private int[] waitingCount;
 
     private PetriNet petriNet;
     private Politic politic;
@@ -28,58 +25,72 @@ public class Monitor implements MonitorInterface {
     public Monitor(PetriNet petriNet, Politic politic) {
         this.petriNet = petriNet;
         this.politic = politic;
-        monitorLock = new ReentrantLock(true);
-        // Initialize the waitingThreads array with the same number of elements as the number of transitions in the petri net.
-        waitingThreads = new Condition[petriNet.getIncidenceMatrix()[0].length];
-        for (int i = 0; i < waitingThreads.length; i++) {
-            waitingThreads[i] = monitorLock.newCondition();
+        // Initialize mutex to 1 (available) with fairness (true)
+        mutex = new Semaphore(1, true); 
+        int numTransitions = petriNet.getIncidenceMatrix()[0].length;
+        waitingThreads = new Semaphore[numTransitions];
+        waitingCount = new int[numTransitions];
+        for (int i = 0; i < numTransitions; i++) {
+            // Initialize each private queue to 0 (blocking)
+            waitingThreads[i] = new Semaphore(0, true);
+            waitingCount[i] = 0;
         }
     }
 
     @Override
     public boolean fireTransition(int transition) {
-        // Acquire the lock to ensure exclusive access to the monitor. Others threads will be blocked until the lock is released.
-        monitorLock.lock();
+        // Try to acquire the main lock to enter the monitor
+        try {
+            mutex.acquire();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return false;
+        }
+        // Try to execute he main loop of the monitor.
         try {
             boolean k = true;
             while (k) {
                 k = petriNet.fireTransition(transition);
-                // If the transition was fired succesfully, check if there are threads waiting for other transitions that are now enabled to fire, and fire them.
                 if (k) {
-                    boolean[] vs = petriNet.getSensitizedTransitions(); // 'vs' is the array of transitions that are now enabled to fire after firing the transition. e.g.: vs = [T0=1, T1=0, T2=1, ..., Tk=x]
-                    boolean[] vc = getWaitingTransitions(); // 'vc' is the array of transitions that have waiting threads. e.g.: vc = [T0=1, T1=0, T2=0, ..., Tk=x]
-                    boolean[] m = compareArrays(vs, vc); // 'm' is the array of transitions that are now enabled to fire and have waiting threads. e.g.: m = [T0=1, T1=0, T2=0, ..., Tk=x]
-                    // Check if there are any transitions that are now enabled to fire and have waiting threads that can fire it.
-                    if (m[0] || m[1] || m[2] || m[3] || m[4] || m[5] || m[6] || m[7] || m[8] || m[9]) {
-                        // Wake up one of the threads waiting for the transition that is now enabled to fire, based on the politic, and set it to run.
+                    boolean[] vs = petriNet.getSensitizedTransitions();
+                    boolean[] vc = getWaitingTransitions();
+                    boolean[] m = compareArrays(vs, vc);
+                    if (containsTrue(m)) {
                         int transitionToFire = politic.selectTransition(m);
-                        waitingThreads[transitionToFire].signal();
-                        k = false;
+                        // We wake up the sleeping thread by releasing ITS private semaphore. Passing the Baton: We do NOT release the main 'mutex' here. The awakened thread will inherit the lock and continue executing inside the monitor, without needing to acquire the 'mutex' again.
+                        waitingThreads[transitionToFire].release();
+                        // We exit the method WITHOUT releasing the main 'mutex'. The awakened thread inherits the lock automatically.
+                        return true;
                     } else {
-                        // If there are no transitions that are now enabled to fire and have waiting threads, exit the loop and return true, since the original transition was fired successfully.
+                        // No one to wake up, we just exit the loop.
                         k = false;
                     }
                 } else {
-                    // If the transition is not enabled, add the current thread to the waitingThreads list for that transition and set it to sleep until the transition is enabled and can be fired.
-                    waitingThreads[transition].await();
-                    // After the thread is woken up, it will try to fire the transition again, and if it is still not enabled, it will go back to sleep until it is woken up again.
+                    // Transition not enabled. We must go to sleep. Increment the waiter count for this transition.
+                    waitingCount[transition]++;
+                    // We release the main door so other threads can enter the monitor.
+                    mutex.release();
+                    // We go to sleep on our private semaphore.
+                    waitingThreads[transition].acquire();
+                    // HERE WAKES UP THE THREAD. We decrement the waiter count for this transition.
+                    waitingCount[transition]--;
+                    // Loop again to try firing.
                     k = true;
                 }
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
-        } finally {
-            // The lock will be released in the finally block to ensure that it is released even if an exception occurs, to avoid deadlocks and allow other threads to access the monitor.
-            monitorLock.unlock();
         }
+        // This release is ONLY executed if the thread is leaving the monitor without waking anyone else up (when k = false).
+        mutex.release();
         return true;
     }
 
     private boolean[] getWaitingTransitions() {
-        boolean[] output = new boolean[waitingThreads.length];
-        // For each transition in the petri net, check if there are threads waiting for that transition to fire, and if there are, add 'true' to 'output', otherwise add 'false' to 'output'.
-        for (int i = 0; i < waitingThreads.length; i++) {
-            output[i] = monitorLock.hasWaiters(waitingThreads[i]);
+        boolean[] output = new boolean[waitingCount.length];
+        for (int i = 0; i < waitingCount.length; i++) {
+            // If the count is greater than 0, there is at least one thread waiting
+            output[i] = (waitingCount[i] > 0);
         }
         return output;
     }
@@ -88,12 +99,15 @@ public class Monitor implements MonitorInterface {
         boolean[] output = new boolean[array_a.length];
         // Make the list 'output' by comparing the 'array_a' and 'array_b'. If a transition is enabled to fire and has waiting threads, add 'true' to 'output', otherwise add 'false' to 'output'.
         for (int i = 0; i < array_a.length; i++) {
-            if (array_a[i] == true && array_b[i] == true) {
-                output[i] = true;
-            } else {
-                output[i] = false;
-            }
+            output[i] = (array_a[i] && array_b[i]);
         }
         return output;
+    }
+
+    private boolean containsTrue(boolean[] array) {
+        for (boolean valor : array) {
+            if (valor) return true;
+        }
+        return false;
     }
 }
