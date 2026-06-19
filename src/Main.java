@@ -17,8 +17,9 @@ public class Main {
     public static void main(String[] args) {
         Logger logger = new Logger();
         PetriNet petriNet = new PetriNet(logger);
-        Politic politic = new Politic();
-        Monitor monitor = new Monitor(petriNet, politic);
+        //PolicyInterface policy = new PrioritizedPolicy();
+        PolicyInterface policy = new RandomPolicy();
+        MonitorInterface monitor = new Monitor(petriNet, policy);
 
         // Create the segments based on the SEGMENTS_SETUP configuration and the transitions of the petri net.
         ArrayList<Segment> segments = new ArrayList<>();

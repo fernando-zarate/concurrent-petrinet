@@ -20,11 +20,11 @@ public class Monitor implements MonitorInterface {
     private int[] waitingCount;
 
     private PetriNet petriNet;
-    private Politic politic;
+    private PolicyInterface policy;
 
-    public Monitor(PetriNet petriNet, Politic politic) {
+    public Monitor(PetriNet petriNet, PolicyInterface policy) {
         this.petriNet = petriNet;
-        this.politic = politic;
+        this.policy = policy;
 
         // Initialize mutex to 1 with fairness to ensure that threads will acquire in order.
         mutex = new Semaphore(1, true); 
@@ -57,12 +57,12 @@ public class Monitor implements MonitorInterface {
             k = petriNet.fireTransition(transition);
             if (k) {
 
-                // Realize the m=vs&vc operation to check if there are any enabled transitions with waiting threads, and if there are, wake up one of them based on the politic.
+                // Realize the m=vs&vc operation to check if there are any enabled transitions with waiting threads, and if there are, wake up one of them based on the policy.
                 boolean[] vs = petriNet.getSensitizedTransitions();
                 boolean[] vc = getWaitingTransitions();
                 boolean[] m = compareArrays(vs, vc);
                 if (containsTrue(m)) {
-                    int transitionToFire = politic.selectTransition(m);
+                    int transitionToFire = policy.selectTransition(m);
 
                     // Wake up the sleeping thread by releasing its private semaphore. We do not release the main 'mutex' here. The awakened thread will inherit the lock and continue executing inside the monitor.
                     waitingThreads[transitionToFire].release();

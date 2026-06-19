@@ -27,12 +27,8 @@ while True:
     f.close()
     
     if match[1] == 0:
-        print('=================')
-        print('   TEST FAILED   ')
-        print('=================')
+        print(' << TEST FAILED >> ')
         break
     if match[0] == '':
-        print('=================')
-        print('   TEST PASSED   ')
-        print('=================')
+        print(' << TEST PASSED >> ')
         break

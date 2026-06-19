@@ -3,23 +3,23 @@ public class PetriNet {
     /*
      * Represent the current marking of the petri net, represented as an array of integers, where each element represents the number of tokens in a place.
      */
-    //                                  P0  P1  P2  P3  P4  P5  P6  P7  P8  P9
-    private int[] marking = new int[] {  3,  0,  0,  0,  0,  0,  0,  1,  1,  0 };
+    //                                               P0  P1  P2  P3  P4  P5  P6  P7  P8  P9
+    private static final int[] marking = new int[] {  3,  0,  0,  0,  0,  0,  0,  1,  1,  0 };
 
     /*
      * Represent the incidence matrix of the petri net, represented as a 2D array of integers.
      */
-    //                                                T0  T1  T2  T3  T4  T5  T6  T7  T8  T9
-    private int[][] incidenceMatrix = new int[][] { { -1,  0,  0,  0,  0,  0,  0,  0,  0,  1 },   // P0
-                                                    {  1, -1,  0,  0, -1,  0, -1,  0,  0,  0 },   // P1
-                                                    {  0,  1, -1,  0,  0,  0,  0,  0,  0,  0 },   // P2
-                                                    {  0,  0,  1, -1,  0,  0,  0,  0,  0,  0 },   // P3
-                                                    {  0,  0,  0,  0,  1, -1,  0,  0,  0,  0 },   // P4
-                                                    {  0,  0,  0,  0,  0,  0,  1, -1,  0,  0 },   // P5
-                                                    {  0,  0,  0,  0,  0,  0,  0,  1, -1,  0 },   // P6
-                                                    {  0, -1,  0,  1, -1,  1,  0,  0,  0,  0 },   // P7
-                                                    {  0,  0,  0,  0, -1,  1, -1,  0,  1,  0 },   // P8
-                                                    {  0,  0,  0,  1,  0,  1,  0,  0,  1, -1 } }; // P9;
+    //                                                             T0  T1  T2  T3  T4  T5  T6  T7  T8  T9
+    private static final int[][] incidenceMatrix = new int[][] { { -1,  0,  0,  0,  0,  0,  0,  0,  0,  1 },   // P0
+                                                                 {  1, -1,  0,  0, -1,  0, -1,  0,  0,  0 },   // P1
+                                                                 {  0,  1, -1,  0,  0,  0,  0,  0,  0,  0 },   // P2
+                                                                 {  0,  0,  1, -1,  0,  0,  0,  0,  0,  0 },   // P3
+                                                                 {  0,  0,  0,  0,  1, -1,  0,  0,  0,  0 },   // P4
+                                                                 {  0,  0,  0,  0,  0,  0,  1, -1,  0,  0 },   // P5
+                                                                 {  0,  0,  0,  0,  0,  0,  0,  1, -1,  0 },   // P6
+                                                                 {  0, -1,  0,  1, -1,  1,  0,  0,  0,  0 },   // P7
+                                                                 {  0,  0,  0,  0, -1,  1, -1,  0,  1,  0 },   // P8
+                                                                 {  0,  0,  0,  1,  0,  1,  0,  0,  1, -1 } }; // P9;
 
     private Logger logger;
 
