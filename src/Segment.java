@@ -1,6 +1,6 @@
 public class Segment implements Runnable {
 
-    private static final int MAX_ITERATIONS = 20000;
+    private static final int MAX_ITERATIONS = 200;
 
     private int segmentId;
     private int[] transitions;
@@ -29,7 +29,7 @@ public class Segment implements Runnable {
                 if (isFired) {
                     updateStatus(transition);
                 } else {
-                    
+
                     // If the thread was interrupted while waiting, we consider that the segment has reached the maximum number of iterations and we stop it.
                     segmentsRunning[segmentId] = false;
                     break;
