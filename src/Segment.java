@@ -1,6 +1,6 @@
 public class Segment implements Runnable {
 
-    private static final int MAX_ITERATIONS = 2000;
+    private static final int MAX_ITERATIONS = 200;
 
     private int segmentId;
 
@@ -65,4 +65,6 @@ public class Segment implements Runnable {
         }
         return false;
     }
+
+    public int getSegmentId() { return segmentId; }
 }
