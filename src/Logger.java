@@ -10,6 +10,7 @@ public class Logger {
     private long startingTime;
 
     public Logger() {
+
         // Clear the transitions log file at the beginning of the program.
         FileWriter fileWriter = null;
         try {
@@ -26,6 +27,7 @@ public class Logger {
                 }
             }
         }
+
         // Clear the debug transitions log file at the beginning of the program.
         fileWriter = null;
         try {
@@ -42,6 +44,7 @@ public class Logger {
                 }
             }
         }
+        
         // Set the starting time of the program to calculate the elapsed time for logging purposes.
         startingTime = System.currentTimeMillis();
     }
@@ -52,6 +55,7 @@ public class Logger {
      * @param marking The current marking of the petri net.
      */
     public synchronized void logTransitionFiring(int transition, int[] marking) {
+
         // Log the firing of the transition to the transitions log file.
         FileWriter fileWriter = null;
         try {
@@ -68,6 +72,7 @@ public class Logger {
                 }
             }
         }
+
         // Log the firing of the transition to the debug transitions log file, with more details like threads name and elapsed time for debugging purposes.
         fileWriter = null;
         try {

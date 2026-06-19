@@ -28,16 +28,19 @@ public class PetriNet {
     }
 
     public boolean fireTransition(int transition) {
+
         // Check if the transition is enabled, which means that for each place, the number of tokens in the place is greater than or equal to the number of tokens required by the transition to fire.
         for (int i = 0; i < marking.length; i++) {
             if (marking[i] < -incidenceMatrix[i][transition]) {
                 return false;
             }
         }
+
         // If the transition is enabled, update the marking of the petri net by adding the corresponding column of the incidence matrix to the current marking.
         for (int i = 0; i < marking.length; i++) {
             marking[i] += incidenceMatrix[i][transition];
         }
+
         // Log the firing of the transition and the new marking of the petri net.
         logger.logTransitionFiring(transition, marking);
         return true;
@@ -49,6 +52,7 @@ public class PetriNet {
      */
     public boolean[] getSensitizedTransitions() {
         boolean[] output = new boolean[incidenceMatrix[0].length];
+
         // For each transition in the petri net, check if it is enabled to fire, and if it is, add 'true' to 'output', otherwise add 'false' to 'output'.
         for (int j = 0; j < incidenceMatrix[0].length; j++) {
             boolean isSensitized = true;
@@ -60,6 +64,7 @@ public class PetriNet {
             }
             output[j] = isSensitized;
         }
+        
         return output;
     }
 

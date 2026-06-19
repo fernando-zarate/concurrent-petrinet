@@ -13,6 +13,7 @@ public class Politic {
                 return i;
             }
         }
+        
         // If there are no enabled transitions, return -1.
         return -1;
     }
