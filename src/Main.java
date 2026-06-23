@@ -8,11 +8,11 @@ public class Main {
      * And the second array indicates the transitions that each segment will fire in a loop.
      */
     //                                             qSegments    Transitions
-    private static int[][][] SEGMENTS_SETUP = { { { 2       }, { 0         } },
-                                                { { 1       }, { 1, 2, 3   } },
-                                                { { 1       }, { 4, 5      } },
-                                                { { 1       }, { 6, 7, 8   } },
-                                                { { 2       }, { 9         } } };
+    private static int[][][] SEGMENTS_SETUP = { { { 2       }, { 0         } },   // Segment A (first)
+                                                { { 1       }, { 1, 2, 3   } },   // Segment B
+                                                { { 1       }, { 4, 5      } },   // Segment C
+                                                { { 1       }, { 6, 7, 8   } },   // Segment D
+                                                { { 2       }, { 9         } } }; // Segment E (last)
 
     public static void main(String[] args) {
         Logger logger = new Logger();
