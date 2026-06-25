@@ -47,17 +47,15 @@ public class Main {
         }
         System.out.printf("THREAD-Main: All %d/%d threads have been started.\n", threads.size(), segments.size());
 
-        // Wait for the last transition to complete MAX_INVARIANTS.
-        int lastTransitionCounterIndex = petriNet.getTransitionCounters().length - 1;
-        int lastTransitionCounter = petriNet.getTransitionCounters()[lastTransitionCounterIndex];
-        while (lastTransitionCounter < MAX_INVARIANTS) {
-            lastTransitionCounter = petriNet.getTransitionCounters()[lastTransitionCounterIndex];
+        // Wait for the last transition (T9) to complete MAX_INVARIANTS.
+        int lastTransitionIndex = petriNet.getIncidenceMatrix()[0].length - 1;
+        while (petriNet.getTransitionCount(lastTransitionIndex) < MAX_INVARIANTS) {
             try {
                 Thread.sleep(5);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            System.out.printf("THREAD-Main: Waiting for the network to be drained... (T%d: %d/%d)\n", lastTransitionCounterIndex, lastTransitionCounter, MAX_INVARIANTS);
+            System.out.printf("THREAD-Main: Waiting for the network to be drained... (T%d: %d/%d)\n", lastTransitionIndex, petriNet.getTransitionCount(lastTransitionIndex), MAX_INVARIANTS);
         }
         System.out.printf("THREAD-Main: Network drained. Interrupting threads...\n");
 

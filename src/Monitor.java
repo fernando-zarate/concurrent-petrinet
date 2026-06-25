@@ -67,24 +67,37 @@ public class Monitor implements MonitorInterface {
                     k = false;
                 }
             
-            // If the transition is not enabled, it goes to sleep. Increment the waiter count for this transition and release the main 'mutex' before going to sleep.
+            // If the transition is not enabled, check whether it is a temporal issue or a token issue.
             } else {
-                waitingCount[transition]++;
-                mutex.release();
+                long sleepTime = petriNet.getSleepTimeFor(transition);
 
-                // We go to sleep on our private semaphore. Waiting to be woken up by another thread.
-                try {
-                    waitingThreads[transition].acquire();
-                    
-                    // HERE WAKES UP A SLEEPING THREAD. We decrement the waiter count for this transition and set k=true to iterate again.
-                    waitingCount[transition]--;
+                if (sleepTime > 0) {
+                    // Temporal: alpha has not elapsed yet. Release the mutex, sleep the exact remaining time, then re-enter.
+                    mutex.release();
+                    try {
+                        Thread.sleep(sleepTime);
+                    } catch (InterruptedException e) {
+                        return false;
+                    }
+                    try {
+                        mutex.acquire();
+                    } catch (InterruptedException e) {
+                        return false;
+                    }
                     k = true;
 
-                // If the thread was interrupted while waiting, we consider that the segment has reached the maximum number of iterations and we stop it.
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                    waitingCount[transition]--;
-                    return false;
+                } else {
+                    // Token issue: go to sleep on the private semaphore until another thread wakes us.
+                    waitingCount[transition]++;
+                    mutex.release();
+                    try {
+                        waitingThreads[transition].acquire();
+                        waitingCount[transition]--;
+                        k = true;
+                    } catch (InterruptedException e) {
+                        waitingCount[transition]--;
+                        return false;
+                    }
                 }
             }
         }
