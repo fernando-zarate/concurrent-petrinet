@@ -4,10 +4,11 @@ import java.util.Arrays;
 
 public class Logger {
 
-    private static final String TRANSITIONS_LOG_PATH = "logs\\transitions_log.txt";
-    private static final String DEBUG_TRANSITIONS_LOG_PATH = "logs\\debug_transitions_log.txt";
+    private final String TRANSITIONS_LOG_PATH = "logs/transitions_log.txt";
+    private final String DEBUG_TRANSITIONS_LOG_PATH = "logs/debug_transitions_log.txt";
+    private final boolean DEBUG_MODE = false;
     
-    private static long startingTime;
+    private long startingTime;
 
     public Logger() {
 
@@ -53,8 +54,9 @@ public class Logger {
      * Logs the firing of a transition to a file.
      * @param transition The index of the fired transition.
      * @param marking The current marking of the petri net.
+     * @param transitionCounters The counters for each transition.
      */
-    public synchronized void logTransitionFiring(int transition, int[] marking) {
+    public synchronized void logTransitionFiring(int transition, int[] marking, int[] transitionCounters) {
 
         // Log the firing of the transition to the transitions log file.
         FileWriter fileWriter = null;
@@ -74,18 +76,20 @@ public class Logger {
         }
 
         // Log the firing of the transition to the debug transitions log file, with more details like threads name and elapsed time for debugging purposes.
-        fileWriter = null;
-        try {
-            fileWriter = new FileWriter(DEBUG_TRANSITIONS_LOG_PATH, true);
-            fileWriter.write(String.format("T%d %s %s %d\n", transition, Arrays.toString(marking), Thread.currentThread().getName(), System.currentTimeMillis() - startingTime));
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (fileWriter != null) {
-                try {
-                    fileWriter.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
+        if (DEBUG_MODE) {
+            fileWriter = null;
+            try {
+                fileWriter = new FileWriter(DEBUG_TRANSITIONS_LOG_PATH, true);
+                fileWriter.write(String.format("T%d %s %s %s %d\n", transition, Arrays.toString(marking), Arrays.toString(transitionCounters), Thread.currentThread().getName(), System.currentTimeMillis() - startingTime));
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (fileWriter != null) {
+                    try {
+                        fileWriter.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
