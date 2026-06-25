@@ -1,5 +1,8 @@
 public class PetriNet {
 
+    private static final int COMPLETION_TRANSITION = 9;
+    private static final int REQUIRED_COMPLETED_INVARIANTS = 200;
+
     /*
      * Represent the current marking of the petri net, represented as an array of integers, where each element represents the number of tokens in a place.
      */
@@ -22,12 +25,24 @@ public class PetriNet {
                                                                  {  0,  0,  0,  1,  0,  1,  0,  0,  1, -1 } }; // P9;
 
     private Logger logger;
+    private int completedInvariants;
+    private boolean finished;
 
     public PetriNet(Logger logger) {
         this.logger = logger;
+        this.completedInvariants = 0;
+        this.finished = false;
     }
 
     public boolean fireTransition(int transition) {
+        if (finished) {
+            return false;
+        }
+
+        if (transition == COMPLETION_TRANSITION && completedInvariants >= REQUIRED_COMPLETED_INVARIANTS) {
+            finished = true;
+            return false;
+        }
 
         // Check if the transition is enabled, which means that for each place, the number of tokens in the place is greater than or equal to the number of tokens required by the transition to fire.
         for (int i = 0; i < marking.length; i++) {
@@ -43,6 +58,14 @@ public class PetriNet {
 
         // Log the firing of the transition and the new marking of the petri net.
         logger.logTransitionFiring(transition, marking);
+
+        if (transition == COMPLETION_TRANSITION) {
+            completedInvariants++;
+            if (completedInvariants >= REQUIRED_COMPLETED_INVARIANTS) {
+                finished = true;
+            }
+        }
+
         return true;
     }
 
@@ -71,4 +94,8 @@ public class PetriNet {
     public int[] getMarking() { return marking; }
 
     public int[][] getIncidenceMatrix() { return incidenceMatrix; }
+
+    public boolean isFinished() { return finished; }
+
+    public int getCompletedInvariants() { return completedInvariants; }
 }

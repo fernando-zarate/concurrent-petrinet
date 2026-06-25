@@ -23,12 +23,9 @@ public class Main {
 
         // Create the segments based on the SEGMENTS_SETUP configuration and the transitions of the petri net.
         ArrayList<Segment> segments = new ArrayList<>();
-        int[] transitionCounters = new int[petriNet.getIncidenceMatrix()[0].length];
-        boolean[] segmentsRunning = new boolean[SEGMENTS_SETUP.length];
         for (int i = 0; i < SEGMENTS_SETUP.length; i++) {
-            segmentsRunning[i] = true;
             for (int j = 0; j < SEGMENTS_SETUP[i][0][0]; j++) {
-                segments.add(new Segment(i, SEGMENTS_SETUP[i][1], transitionCounters, segmentsRunning, monitor));
+                segments.add(new Segment(i, SEGMENTS_SETUP[i][1], monitor));
                 System.out.printf("THREAD-MAIN: Created segment %d for transitions %s.\n", segments.size() - 1, java.util.Arrays.toString(SEGMENTS_SETUP[i][1]));
             }
         }
@@ -43,22 +40,6 @@ public class Main {
             System.out.printf("THREAD-MAIN: Started thread %d for segment %d.\n", threads.size() - 1, segment.getSegmentId());
         }
         System.out.printf("THREAD-MAIN: All %d threads have been started.\n", threads.size());
-
-        // Wait for the first and last thread to finish.
-        while (segmentsRunning[segmentsRunning.length - 1] == true) {
-            try {
-                Thread.sleep(50); // Dormimos 50ms para no consumir CPU en vano
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            System.out.printf("THREAD-MAIN: Waiting for the network to be drained...\n");
-        }
-        System.out.printf("THREAD-MAIN: Network drained. Interrupting sleeping threads...\n");
-
-        // Interrupt all others threads just in case they are still running.
-        for (Thread thread : threads) {
-            thread.interrupt();
-        }
 
         // Wait for all threads to finish.
         for (Thread thread : threads) {

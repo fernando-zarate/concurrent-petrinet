@@ -21,10 +21,12 @@ public class Monitor implements MonitorInterface {
 
     private PetriNet petriNet;
     private PolicyInterface policy;
+    private boolean waitingThreadsReleased;
 
     public Monitor(PetriNet petriNet, PolicyInterface policy) {
         this.petriNet = petriNet;
         this.policy = policy;
+        this.waitingThreadsReleased = false;
 
         // Initialize mutex to 1 with fairness to ensure that threads will acquire in order.
         mutex = new Semaphore(1, true); 
@@ -42,66 +44,101 @@ public class Monitor implements MonitorInterface {
 
     @Override
     public boolean fireTransition(int transition) {
-
-        // Try to acquire the main lock to enter the monitor
+        boolean mutexAcquired = false;
+        boolean registeredAsWaiting = false;
         try {
             mutex.acquire();
-        } catch (InterruptedException e) {
-            //e.printStackTrace();
-            return false;
-        }
+            mutexAcquired = true;
 
-        // We are now inside the monitor, we have the lock. We will try to fire the transition.
-        boolean k = true;
-        while (k) {
-            k = petriNet.fireTransition(transition);
-            if (k) {
-
-                // Realize the m=vs&vc operation to check if there are any enabled transitions with waiting threads, and if there are, wake up one of them based on the policy.
-                boolean[] vs = petriNet.getSensitizedTransitions();
-                boolean[] vc = getWaitingTransitions();
-                boolean[] m = compareArrays(vs, vc);
-                if (containsTrue(m)) {
-                    int transitionToFire = policy.selectTransition(m);
-
-                    // Wake up the sleeping thread by releasing its private semaphore. We do not release the main 'mutex' here. The awakened thread will inherit the lock and continue executing inside the monitor.
-                    waitingThreads[transitionToFire].release();
-
-                    // We exit the method WITHOUT releasing the main 'mutex'. The awakened thread inherits the lock automatically.
-                    return true;
-
-                // If no one to wake up, we just exit the loop.
-                } else {
-                    k = false;
-                }
-            
-            // If the transition is not enabled, it goes to sleep. Increment the waiter count for this transition and release the main 'mutex' before going to sleep.
-            } else {
-                waitingCount[transition]++;
-                mutex.release();
-
-                try {
-                    // We go to sleep on our private semaphore.
-                    waitingThreads[transition].acquire();
-
-                    // << HERE WAKES UP A SLEEPING THREAD >>
-
-                    // Then, we decrement the waiter count for this transition and set k=true to iterate again.
-                    waitingCount[transition]--;
-                    k = true;
-
-                // If the thread was interrupted while waiting, we consider that the segment has reached the maximum number of iterations and we stop it.
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                    waitingCount[transition]--;
+            while (true) {
+                if (petriNet.isFinished()) {
+                    finishExecution();
                     return false;
                 }
+
+                boolean fired = petriNet.fireTransition(transition);
+                if (fired) {
+                    if (petriNet.isFinished()) {
+                        finishExecution();
+                        return false;
+                    }
+
+                    wakeNextSensitizedWaitingThread();
+                    return true;
+                }
+
+                waitingCount[transition]++;
+                registeredAsWaiting = true;
+                wakeNextSensitizedWaitingThread();
+                mutex.release();
+                mutexAcquired = false;
+
+                waitingThreads[transition].acquire();
+                registeredAsWaiting = false;
+
+                mutex.acquire();
+                mutexAcquired = true;
+            }
+        } catch (InterruptedException e) {
+            if (registeredAsWaiting) {
+                removeInterruptedWaiter(transition);
+            }
+            return false;
+        } finally {
+            if (mutexAcquired) {
+                mutex.release();
             }
         }
+    }
 
-        // This release is ONLY executed if the thread is leaving the monitor without waking anyone else up (when k=false).
-        mutex.release();
-        return true;
+    private void finishExecution() {
+        if (!waitingThreadsReleased) {
+            System.out.printf("THREAD-MONITOR: Completed invariants: %d\n", petriNet.getCompletedInvariants());
+        }
+        releaseAllWaitingThreads();
+    }
+
+    private void releaseAllWaitingThreads() {
+        if (waitingThreadsReleased) {
+            return;
+        }
+
+        waitingThreadsReleased = true;
+        for (int i = 0; i < waitingThreads.length; i++) {
+            if (waitingCount[i] > 0) {
+                int threadsToRelease = waitingCount[i];
+                waitingCount[i] = 0;
+                waitingThreads[i].release(threadsToRelease);
+            }
+        }
+    }
+
+    private void removeInterruptedWaiter(int transition) {
+        boolean acquired = false;
+        try {
+            mutex.acquire();
+            acquired = true;
+            if (waitingCount[transition] > 0) {
+                waitingCount[transition]--;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            if (acquired) {
+                mutex.release();
+            }
+        }
+    }
+
+    private void wakeNextSensitizedWaitingThread() {
+        boolean[] vs = petriNet.getSensitizedTransitions();
+        boolean[] vc = getWaitingTransitions();
+        boolean[] m = compareArrays(vs, vc);
+        if (containsTrue(m)) {
+            int transitionToFire = policy.selectTransition(m);
+            waitingCount[transitionToFire]--;
+            waitingThreads[transitionToFire].release();
+        }
     }
 
     private boolean[] getWaitingTransitions() {
