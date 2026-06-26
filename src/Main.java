@@ -14,17 +14,17 @@ public class Main {
      * And the second array indicates the transitions that each segment will fire in a loop.
      */
     //                                                   qSegments    Transitions
-    private static final int[][][] SEGMENTS_SETUP = { { { 2       }, { 0         } },   // Segment A (first)
+    private static final int[][][] SEGMENTS_SETUP = { { { 3       }, { 0         } },   // Segment A (first)
                                                       { { 1       }, { 1, 2, 3   } },   // Segment B
                                                       { { 1       }, { 4, 5      } },   // Segment C
                                                       { { 1       }, { 6, 7, 8   } },   // Segment D
-                                                      { { 2       }, { 9         } } }; // Segment E (last)
+                                                      { { 3       }, { 9         } } }; // Segment E (last)
 
     public static void main(String[] args) {
         Logger logger = new Logger();
         PetriNet petriNet = new PetriNet(MAX_INVARIANTS, logger);
-        //PolicyInterface policy = new PrioritizedPolicy();
-        PolicyInterface policy = new RandomPolicy();
+        PolicyInterface policy = new PrioritizedPolicy();
+        //PolicyInterface policy = new RandomPolicy();
         MonitorInterface monitor = new Monitor(petriNet, policy);
 
         // Create the segments based on the SEGMENTS_SETUP configuration and the transitions of the petri net.
@@ -57,7 +57,7 @@ public class Main {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            System.out.printf("THREAD-Main: Waiting for the network to be drained... (T%d: %d/%d)\n", lastTransitionCounterIndex, lastTransitionCounter, MAX_INVARIANTS);
+            //System.out.printf("THREAD-Main: Waiting for the network to be drained... (T%d: %d/%d)\n", lastTransitionCounterIndex, lastTransitionCounter, MAX_INVARIANTS);
         }
         System.out.printf("THREAD-Main: Network drained. Interrupting threads...\n");
 
@@ -77,5 +77,16 @@ public class Main {
             }
         }
         System.out.printf("THREAD-Main: All threads have finished.\n");
+
+        // Print the final counters for the transitions of interest.
+        int[] counters = petriNet.getTransitionCounters();
+        int creditCard   = counters[1]; // T1
+        int highRisk     = counters[4]; // T4
+        int bankTransfer = counters[6]; // T6
+
+        System.out.printf("Credit/Debit:    %d%n", creditCard);
+        System.out.printf("High-Risk:       %d%n", highRisk);
+        System.out.printf("Bank Transfer:   %d%n", bankTransfer);
+        System.out.printf("Total:           %d / %d%n", creditCard + highRisk + bankTransfer, MAX_INVARIANTS);
     }
 }
