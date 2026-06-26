@@ -90,6 +90,8 @@ public class PetriNet {
             marking[i] += incidenceMatrix[i][transition];
         }
 
+        verifyPlaceInvariants();
+
         // 6.6: actualiceSensibilizadoT()
         // Sacamos una foto de quién está sensibilizado DESPUÉS del disparo
         boolean[] sensitizedAfter = getSensitizedTransitionsByMarking();
@@ -107,6 +109,22 @@ public class PetriNet {
         transitionCounters[transition]++;
         logger.logTransitionFiring(transition, marking, transitionCounters);
         return true;
+    }
+
+    private void verifyPlaceInvariants() {
+        int[][] invariants = {
+            { 0, 1, 2, 3, 4, 5, 6, 9 },
+            { 2, 3, 4, 7 },
+            { 4, 5, 6, 8 }
+        };
+        int[] expectedSums = { 3, 1, 1 };
+        for (int k = 0; k < invariants.length; k++) {
+            int sum = 0;
+            for (int idx : invariants[k]) sum += marking[idx];
+            if (sum != expectedSums[k]) {
+                throw new IllegalStateException("Place invariant violated");
+            }
+        }
     }
 
     public boolean[] getSensitizedTransitionsByMarking(){
