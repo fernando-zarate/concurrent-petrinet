@@ -17,12 +17,13 @@ public class PetriNet {
                                                           {  0,  0,  0,  0, -1,  1, -1,  0,  1,  0 },   // P8
                                                           {  0,  0,  0,  1,  0,  1,  0,  0,  1, -1 } }; // P9;
 
+    //                                         T0  T1  T2  T3  T4  T5  T6  T7  T8  T9
+    private final long[] alphas = new long[] {  0,  0, 20, 20,  0, 70,  0, 10, 10,  0 };
+
+    private long[] timeStamp;
     private int maxInvariants;
     private int[] transitionCounters;
     private Logger logger;
-    
-    private long[] timeStamp;
-    long[] alphas = new long[] { 0, 0, 20, 20, 0, 100, 0, 10, 10, 0 };
 
     public PetriNet(int maxInvariants, Logger logger) {
         this.maxInvariants = maxInvariants;
@@ -63,7 +64,7 @@ public class PetriNet {
 
             if (timeToWait > 0) {
                 // [antes == true] - Todavía no se cumplió el tiempo Alfa
-                mutex.release(); 
+                mutex.release();
                 try{
                     // 4: sleep(timeStamp + alfa - ahora)
                     Thread.sleep(timeToWait);
@@ -126,9 +127,6 @@ public class PetriNet {
         }
         return output;
     }
-
-    // Los métodos antiguos relacionados al tiempo (getSensitizedTransitionsByTime, 
-    // getTimeStamp, setTimeStamp) pueden eliminarse para mantener el código limpio.
     
     public int[][] getIncidenceMatrix() { return incidenceMatrix; }
 
