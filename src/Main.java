@@ -53,7 +53,7 @@ public class Main {
         while (lastTransitionCounter < MAX_INVARIANTS) {
             lastTransitionCounter = petriNet.getTransitionCounters()[lastTransitionCounterIndex];
             try {
-                Thread.sleep(5);
+                Thread.sleep(1);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

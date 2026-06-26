@@ -1,3 +1,5 @@
+import java.util.concurrent.Semaphore;
+
 public class PetriNet {
 
     //                                        P0  P1  P2  P3  P4  P5  P6  P7  P8  P9
@@ -16,44 +18,97 @@ public class PetriNet {
                                                           {  0,  0,  0,  1,  0,  1,  0,  0,  1, -1 } }; // P9;
 
     private int maxInvariants;
-    private int[] transitionCounters = new int[incidenceMatrix[0].length];
+    private int[] transitionCounters;
     private Logger logger;
+    
+    private long[] timeStamp;
+    long[] alphas = new long[] { 0, 0, 20, 20, 0, 100, 0, 10, 10, 0 };
 
     public PetriNet(int maxInvariants, Logger logger) {
         this.maxInvariants = maxInvariants;
         this.logger = logger;
+        this.transitionCounters = new int[incidenceMatrix[0].length];
+        
+        // 1. Inicializar el arreglo de timeStamps
+        this.timeStamp = new long[incidenceMatrix[0].length];
+        
+        // 2. Setear el timeStamp inicial (ahora) para las transiciones
+        //    que ya están sensibilizadas por tokens al arrancar la red.
+        boolean[] initialSensitized = getSensitizedTransitionsByMarking();
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < initialSensitized.length; i++) {
+            if (initialSensitized[i]) {
+                timeStamp[i] = now;
+            }
+        }
     }
 
-    public boolean fireTransition(int transition) {
+    public boolean fireTransition(int transition, Semaphore mutex) {
 
-        // Check if the transition can be fired based on his own transition counter.
         if (transitionCounters[transition] >= maxInvariants) {
             return false;
         }
 
-        // Check if the transition is enabled by tokens.
-        for (int i = 0; i < marking.length; i++) {
-            if (marking[i] < -incidenceMatrix[i][transition]) {
-                return false;
+        // Bucle para poder re-evaluar de forma segura después de despertar del sleep
+        while (true) {
+            
+            // 1.1: estaSensibilizado()
+            if (!getSensitizedTransitionsByMarking()[transition]){
+                return false; // No hay tokens, le devolvemos false al Monitor
+            }
+
+            // 1.1.1: testVentanaTiempo()
+            long currentTime = System.currentTimeMillis();
+            long timeToWait = (timeStamp[transition] + alphas[transition]) - currentTime;
+
+            if (timeToWait > 0) {
+                // [antes == true] - Todavía no se cumplió el tiempo Alfa
+                mutex.release(); 
+                try{
+                    // 4: sleep(timeStamp + alfa - ahora)
+                    Thread.sleep(timeToWait);
+                    mutex.acquire();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+                // Al despertar, el bucle while vuelve a empezar, re-chequeando 
+                // tokens y tiempo por si otro hilo alteró la red.
+            } else {
+                // [ventana == true] - El tiempo Alfa ya se cumplió, rompemos el bucle para disparar
+                break;
             }
         }
 
-        // If the transition is enabled, update the marking of the petri net by adding the corresponding column of the incidence matrix to the current marking.
+        // 6: calculoDeVectorEstado()
+        // Guardamos una foto de quién estaba sensibilizado ANTES del disparo
+        boolean[] sensitizedBefore = getSensitizedTransitionsByMarking();
+
+        // Aplicamos el disparo modificando el marcado
         for (int i = 0; i < marking.length; i++) {
             marking[i] += incidenceMatrix[i][transition];
         }
 
-        // Log the firing of the transition.
+        // 6.6: actualiceSensibilizadoT()
+        // Sacamos una foto de quién está sensibilizado DESPUÉS del disparo
+        boolean[] sensitizedAfter = getSensitizedTransitionsByMarking();
+        long now = System.currentTimeMillis();
+        
+        // 6.6.1: setNuevoTimeStamp()
+        for (int j = 0; j < sensitizedAfter.length; j++) {
+            // Si la transición está sensibilizada ahora, y NO lo estaba antes...
+            // O si es la misma transición que acaba de disparar y sigue sensibilizada (reinicia su propio ciclo)
+            if (sensitizedAfter[j] && (!sensitizedBefore[j] || j == transition)) {
+                timeStamp[j] = now;
+            }
+        }
+
         transitionCounters[transition]++;
         logger.logTransitionFiring(transition, marking, transitionCounters);
         return true;
     }
 
-    /*
-     * Returns an array of booleans indicating which transitions are enabled to fire based on the current marking and the transition counters.
-     * The place of each transition in the array corresponds to the index of the transition in the incidence matrix.
-     */
-    public boolean[] getSensitizedTransitions() {
+    public boolean[] getSensitizedTransitionsByMarking(){
         boolean[] output = new boolean[incidenceMatrix[0].length];
         for (int j = 0; j < incidenceMatrix[0].length; j++) {
             if (transitionCounters[j] >= maxInvariants) {
@@ -72,6 +127,9 @@ public class PetriNet {
         return output;
     }
 
+    // Los métodos antiguos relacionados al tiempo (getSensitizedTransitionsByTime, 
+    // getTimeStamp, setTimeStamp) pueden eliminarse para mantener el código limpio.
+    
     public int[][] getIncidenceMatrix() { return incidenceMatrix; }
 
     public int[] getTransitionCounters() { return transitionCounters; }

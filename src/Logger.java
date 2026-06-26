@@ -6,7 +6,7 @@ public class Logger {
 
     private final String TRANSITIONS_LOG_PATH = "logs/transitions_log.txt";
     private final String DEBUG_TRANSITIONS_LOG_PATH = "logs/debug_transitions_log.txt";
-    private final boolean DEBUG_MODE = false;
+    private final boolean DEBUG_MODE = true;
     
     private long startingTime;
 

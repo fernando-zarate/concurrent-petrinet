@@ -50,11 +50,11 @@ public class Monitor implements MonitorInterface {
         // We are now inside the monitor, we have the lock. We will try to fire the transition.
         boolean k = true;
         while (k) {
-            k = petriNet.fireTransition(transition);
+            k = petriNet.fireTransition(transition, mutex);
             if (k) {
 
                 // Realize the m=vs&vc operation to check if there are any enabled transitions with waiting threads, and if there are, wake up one of them based on the policy.
-                boolean[] vs = petriNet.getSensitizedTransitions();
+                boolean[] vs = petriNet.getSensitizedTransitionsByMarking();
                 boolean[] vc = getWaitingTransitions();
                 boolean[] m = compareArrays(vs, vc);
                 if (containsTrue(m)) {
