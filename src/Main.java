@@ -23,8 +23,8 @@ public class Main {
     public static void main(String[] args) {
         Logger logger = new Logger();
         PetriNet petriNet = new PetriNet(MAX_INVARIANTS, logger);
-        PolicyInterface policy = new PrioritizedPolicy();
-        //PolicyInterface policy = new RandomPolicy();
+        //PolicyInterface policy = new PrioritizedPolicy();
+        PolicyInterface policy = new RandomPolicy();
         MonitorInterface monitor = new Monitor(petriNet, policy);
 
         // Create the segments based on the SEGMENTS_SETUP configuration and the transitions of the petri net.
@@ -82,7 +82,7 @@ public class Main {
         //System.out.printf("THREAD-Main: All threads have finished.\n");
         
         // Print the final counters for the transitions of interest.
-        int[] counters = petriNet.getTransitionCounters();
+        int[] counters   = petriNet.getTransitionCounters();
         int creditCard   = counters[1]; // T1
         int highRisk     = counters[4]; // T4
         int bankTransfer = counters[6]; // T6

@@ -18,7 +18,7 @@ public class PetriNet {
                                                           {  0,  0,  0,  1,  0,  1,  0,  0,  1, -1 } }; // P9;
 
     //                                         T0  T1  T2  T3   T4   T5  T6  T7   T8   T9
-    private final long[] alphas = new long[] {  0,  0, 100, 80,  0, 400,  0, 200, 140,  0 };
+    private final long[] alphas = new long[] {  0,  0, 100, 80,  0, 400,  0, 200, 160,  0 };
 
     private long[] timeStamp;
     private int maxInvariants;
@@ -65,16 +65,11 @@ public class PetriNet {
             if (timeToWait > 0) {
                 // [antes == true] - Todavía no se cumplió el tiempo Alfa
                 mutex.release();
-                try{
+                try {
                     // 4: sleep(timeStamp + alfa - ahora)
                     Thread.sleep(timeToWait);
                     mutex.acquire();
                 } catch (InterruptedException e) {
-                    boolean acquired = false;
-                    while (!acquired) {
-                        try { mutex.acquire(); acquired = true; }
-                        catch (InterruptedException ignored) {}
-                    }
                     Thread.currentThread().interrupt();
                     return false;
                 }

@@ -19,7 +19,7 @@ public class Segment implements Runnable {
 
                 // If the transition was not processed, it means that the segment has reached the maximum number of iterations and we stop it.
                 if (!wasProcessed) {
-                    System.out.printf("THREAD-%s: Transition %d not processed. Exiting segment.\n", Thread.currentThread().getName(), transition);
+                    //System.out.printf("THREAD-%s: Transition %d not processed. Exiting segment.\n", Thread.currentThread().getName(), transition);
                     return;
                 }
             }
