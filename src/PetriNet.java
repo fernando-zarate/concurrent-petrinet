@@ -70,6 +70,11 @@ public class PetriNet {
                     Thread.sleep(timeToWait);
                     mutex.acquire();
                 } catch (InterruptedException e) {
+                    boolean acquired = false;
+                    while (!acquired) {
+                        try { mutex.acquire(); acquired = true; }
+                        catch (InterruptedException ignored) {}
+                    }
                     Thread.currentThread().interrupt();
                     return false;
                 }
