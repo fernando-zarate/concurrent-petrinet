@@ -56,7 +56,7 @@ public class Logger {
      * @param marking The current marking of the petri net.
      * @param transitionCounters The counters for each transition.
      */
-    public synchronized void logTransitionFiring(int transition, int[] marking, int[] transitionCounters) {
+    public void logTransitionFiring(int transition, int[] marking, int[] transitionCounters) {
 
         // Log the firing of the transition to the transitions log file.
         FileWriter fileWriter = null;

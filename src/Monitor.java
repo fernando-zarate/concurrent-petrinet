@@ -21,8 +21,8 @@ public class Monitor implements MonitorInterface {
 
     private PetriNet petriNet;
     private PolicyInterface policy;
-    
-    //private int t4EligibleCount = 0;
+
+    // private int t4EligibleCount = 0;
 
     public Monitor(PetriNet petriNet, PolicyInterface policy) {
         this.petriNet = petriNet;

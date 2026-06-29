@@ -95,6 +95,6 @@ public class Main {
         System.out.printf("Total:           %d / %d%n", creditCard + highRisk + bankTransfer, MAX_INVARIANTS);
         //System.out.printf("T4 eligible (politica podia elegirla): %d%n", t4Eligible);
         long elapsed = System.currentTimeMillis() - startTime;
-        System.out.printf("Tiempo total de ejecución: %d ms (%.2f s)%n", elapsed, elapsed / 1000.0);
+        System.out.printf("Tiempo total de ejecución: %.2f s%n", elapsed / 1000.0);
     }
 }
