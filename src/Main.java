@@ -3,36 +3,38 @@ import java.util.ArrayList;
 public class Main {
 
     /*
+     * The maximum number of times a transition can be fired before the program ends (transition invariants).
+     */
+    private static final int MAX_INVARIANTS = 200;
+
+    /*
      * Each row indicates the segments to be created.
      * The first number indicates the number of segments.
      * And the second array indicates the transitions that each segment will fire in a loop.
      */
-    //                                             qSegments    Transitions
-    private static int[][][] SEGMENTS_SETUP = { { { 2       }, { 0         } },   // Segment A (first)
-                                                { { 1       }, { 1, 2, 3   } },   // Segment B
-                                                { { 1       }, { 4, 5      } },   // Segment C
-                                                { { 1       }, { 6, 7, 8   } },   // Segment D
-                                                { { 2       }, { 9         } } }; // Segment E (last)
+    //                                                   qSegments    Transitions
+    private static final int[][][] SEGMENTS_SETUP = { { { 3       }, { 0         } },   // Segment A (first)
+                                                      { { 1       }, { 1, 2, 3   } },   // Segment B
+                                                      { { 1       }, { 4, 5      } },   // Segment C
+                                                      { { 1       }, { 6, 7, 8   } },   // Segment D
+                                                      { { 3       }, { 9         } } }; // Segment E (last)
 
     public static void main(String[] args) {
         Logger logger = new Logger();
-        PetriNet petriNet = new PetriNet(logger);
+        PetriNet petriNet = new PetriNet(MAX_INVARIANTS, logger);
         //PolicyInterface policy = new PrioritizedPolicy();
         PolicyInterface policy = new RandomPolicy();
         MonitorInterface monitor = new Monitor(petriNet, policy);
 
         // Create the segments based on the SEGMENTS_SETUP configuration and the transitions of the petri net.
         ArrayList<Segment> segments = new ArrayList<>();
-        int[] transitionCounters = new int[petriNet.getIncidenceMatrix()[0].length];
-        boolean[] segmentsRunning = new boolean[SEGMENTS_SETUP.length];
         for (int i = 0; i < SEGMENTS_SETUP.length; i++) {
-            segmentsRunning[i] = true;
             for (int j = 0; j < SEGMENTS_SETUP[i][0][0]; j++) {
-                segments.add(new Segment(i, SEGMENTS_SETUP[i][1], transitionCounters, segmentsRunning, monitor));
-                System.out.printf("THREAD-MAIN: Created segment %d for transitions %s.\n", segments.size() - 1, java.util.Arrays.toString(SEGMENTS_SETUP[i][1]));
+                segments.add(new Segment(SEGMENTS_SETUP[i][1], monitor));
+                //System.out.printf("THREAD-Main: Created segment %d for transitions %s.\n", segments.size() - 1, Arrays.toString(SEGMENTS_SETUP[i][1]));
             }
         }
-        System.out.printf("THREAD-MAIN: Created %d segments.\n", segments.size());
+        //System.out.printf("THREAD-Main: Created %d segments.\n", segments.size());
 
         // Create a thread for each segment and start all of them.
         ArrayList<Thread> threads = new ArrayList<>();
@@ -40,25 +42,30 @@ public class Main {
             Thread thread = new Thread(segment);
             threads.add(thread);
             thread.start();
-            System.out.printf("THREAD-MAIN: Started thread %d for segment %d.\n", threads.size() - 1, segment.getSegmentId());
+            //System.out.printf("THREAD-Main: Starting thread %d/%d.\n", threads.size() - 1, segments.size() - 1);
         }
-        System.out.printf("THREAD-MAIN: All %d threads have been started.\n", threads.size());
+        //System.out.printf("THREAD-Main: All %d/%d threads have been started.\n", threads.size(), segments.size());
 
-        // Wait for the first and last thread to finish.
-        while (segmentsRunning[segmentsRunning.length - 1] == true) {
+        // Wait for the last transition to complete MAX_INVARIANTS.
+        int lastTransitionCounterIndex = petriNet.getTransitionCounters().length - 1;
+        int lastTransitionCounter = petriNet.getTransitionCounters()[lastTransitionCounterIndex];
+        while (lastTransitionCounter < MAX_INVARIANTS) {
+            lastTransitionCounter = petriNet.getTransitionCounters()[lastTransitionCounterIndex];
             try {
-                Thread.sleep(50); // Dormimos 50ms para no consumir CPU en vano
+                Thread.sleep(1);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            System.out.printf("THREAD-MAIN: Waiting for the network to be drained...\n");
+            //System.out.printf("THREAD-Main: Waiting for the network to be drained... (T%d: %d/%d)\n", lastTransitionCounterIndex, lastTransitionCounter, MAX_INVARIANTS);
         }
-        System.out.printf("THREAD-MAIN: Network drained. Interrupting sleeping threads...\n");
+        //System.out.printf("THREAD-Main: Network drained. Interrupting threads...\n");
 
-        // Interrupt all others threads just in case they are still running.
+        // Interrupt all threads.
         for (Thread thread : threads) {
             thread.interrupt();
+            //System.out.printf("THREAD-Main: Interrupting thread %s.\n", thread.getName());
         }
+        //System.out.printf("THREAD-Main: All threads have been interrupted. Waiting for them to finish...\n");
 
         // Wait for all threads to finish.
         for (Thread thread : threads) {
@@ -68,6 +75,18 @@ public class Main {
                 e.printStackTrace();
             }
         }
-        System.out.printf("THREAD-MAIN: All threads have finished.\n");
+        //System.out.printf("THREAD-Main: All threads have finished.\n");
+        
+        // Print the final counters for the transitions of interest.
+        int[] counters = petriNet.getTransitionCounters();
+        int creditCard = counters[1];
+        int highRisk = counters[4];
+        int bankTransfer = counters[6];
+        System.out.printf("Credit/Debit:    %d%n", creditCard);
+        System.out.printf("High-Risk:       %d%n", highRisk);
+        System.out.printf("Bank Transfer:   %d%n", bankTransfer);
+        System.out.printf("Total:           %d / %d%n", creditCard + highRisk + bankTransfer, MAX_INVARIANTS);
+        long elapsed = System.currentTimeMillis() - logger.getStartingTime();
+        System.out.printf("Tiempo total de ejecución: %.2f s%n", elapsed / 1000.0);
     }
 }
