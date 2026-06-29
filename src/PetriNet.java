@@ -16,7 +16,7 @@ public class PetriNet {
                                                           {  0,  0,  0,  1,  0,  1,  0,  0,  1, -1 } }; // P9;
 
     //                                          T0   T1   T2   T3   T4   T5   T6   T7   T8   T9
-    private final long[] alphas = new long[] {   0,   0,  10,  10,   0,  10,   0,  10,  10,   0 };
+    private final long[] alphas = new long[] {   0,   0, 100,  80,   0, 400,   0, 200, 160,   0 };
 
     //                                             Total    PlacesInvariants
     private final int[][][] placeInvariants = { { {  3  }, { 0, 1, 2, 3, 4, 5, 6, 9 } },   // Pi0
