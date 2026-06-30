@@ -2,8 +2,8 @@ import java.util.concurrent.Semaphore;
 
 public class PetriNet {
 
-    //                                        P0  P1  P2  P3  P4  P5  P6  P7  P8  P9
-    private final int[] marking = new int[] {  3,  0,  0,  0,  0,  0,  0,  1,  1,  0 };
+    //                                         P0   P1   P2   P3   P4   P5   P6   P7   P8   P9
+    private final int[] marking = new int[] {   3,   0,   0,   0,   0,   0,   0,   1,   1,   0 };
 
     //                                                      T0  T1  T2  T3  T4  T5  T6  T7  T8  T9
     private final int[][] incidenceMatrix = new int[][] { { -1,  0,  0,  0,  0,  0,  0,  0,  0,  1 },   // P0
@@ -17,10 +17,15 @@ public class PetriNet {
                                                           {  0,  0,  0,  0, -1,  1, -1,  0,  1,  0 },   // P8
                                                           {  0,  0,  0,  1,  0,  1,  0,  0,  1, -1 } }; // P9;
 
-    //                                         T0  T1  T2  T3   T4   T5  T6  T7   T8   T9
-    private final long[] alphas = new long[] {  0,  0, 100, 80,  0, 400,  0, 200, 160,  0 };
+    //                                          T0   T1   T2   T3   T4   T5   T6   T7   T8   T9
+    private final long[] alphas = new long[] {   0,   0, 100,  80,   0, 400,   0, 200, 160,   0 };
 
-    private long[] timeStamp;
+    //                                             Total    PlacesInvariants
+    private final int[][][] placeInvariants = { { {  3  }, { 0, 1, 2, 3, 4, 5, 6, 9 } },   // Pi0
+                                                { {  1  }, { 2, 3, 4, 7             } },   // Pi1
+                                                { {  1  }, { 4, 5, 6, 8             } } }; // Pi2
+
+    private long[] timeStamps;
     private int maxInvariants;
     private int[] transitionCounters;
     private Logger logger;
@@ -31,55 +36,39 @@ public class PetriNet {
         this.transitionCounters = new int[incidenceMatrix[0].length];
         
         // Inicializa el arreglo de tiempos
-        this.timeStamp = new long[incidenceMatrix[0].length];
+        this.timeStamps = new long[incidenceMatrix[0].length];
         
-        //  Setea el timeStamp inicial (ahora) para las transiciones
-        //    que ya están sensibilizadas por tokens al arrancar la red.
+        // Setea el timeStamp inicial (ahora) para las transiciones
+        // que ya están sensibilizadas por tokens al arrancar la red.
         boolean[] initialSensitized = getSensitizedTransitionsByMarking();
         long now = System.currentTimeMillis();
         for (int i = 0; i < initialSensitized.length; i++) {
             if (initialSensitized[i]) {
-                timeStamp[i] = now;
+                timeStamps[i] = now;
             }
         }
     }
 
-    public boolean fireTransition(int transition, Semaphore mutex) {
+    public int fireTransition(int transition) {
 
         if (transitionCounters[transition] >= maxInvariants) {
-            return false;
+            return -1;
+        }
+        
+        // 1. Verificamos si hay tokens. Si no hay, devolvemos -1.
+        if (!getSensitizedTransitionsByMarking()[transition]) {
+            return -1; 
         }
 
-        // Reevalua después de despertar
-        while (true) {
-            
-            if (!getSensitizedTransitionsByMarking()[transition]){
-                return false; // No hay tokens, le devolvemos false al Monitor
-            }
+        long currentTime = System.currentTimeMillis();
+        long timeToWait = (timeStamps[transition] + alphas[transition]) - currentTime;
 
-            long currentTime = System.currentTimeMillis();
-            long timeToWait = (timeStamp[transition] + alphas[transition]) - currentTime; // Tiempo restante para cumplir el alpha
-
-            if (timeToWait > 0) {
-                // Todavía no se cumplió el tiempo
-                mutex.release();
-                try {
-                    // 4: sleep(timeStamp + alfa - ahora)
-                    Thread.sleep(timeToWait);
-                    mutex.acquire();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return false;
-                }
-                // Al despertar, el bucle while vuelve a empezar, re-chequeando 
-                // tokens y tiempo por si otro hilo alteró la red
-            } else {
-                // El tiempo ya se cumplió, rompemos el bucle para disparar
-                break;
-            }
+        // 2. Verificamos el tiempo. Si falta tiempo, devolvemos los ms que faltan.
+        if (timeToWait > 0) {
+            return (int) timeToWait; 
         }
 
-        // Guardamos quién estaba sensibilizado antes del disparo
+        // 3. Hay tokens y se cumplió el tiempo. Disparamos.
         boolean[] sensitizedBefore = getSensitizedTransitionsByMarking();
 
         // Aplicamos el disparo modificando el marcado
@@ -90,34 +79,30 @@ public class PetriNet {
         // Verificamos que se cumplan los invariantes en cada transición
         verifyPlaceInvariants();
 
-        // Guardamos quién está sensibilizado después del disparo (ya en la ventana)
+        // Guardamos quién está sensibilizado después del disparo
         boolean[] sensitizedAfter = getSensitizedTransitionsByMarking();
         long now = System.currentTimeMillis();
         
         for (int j = 0; j < sensitizedAfter.length; j++) {
-            // Si la transición está sensibilizada ahora, y no lo estaba antes
-            // o si es la misma transición que acaba de disparar y sigue sensibilizada
             if (sensitizedAfter[j] && (!sensitizedBefore[j] || j == transition)) {
-                timeStamp[j] = now;
+                timeStamps[j] = now;
             }
         }
 
         transitionCounters[transition]++;
         logger.logTransitionFiring(transition, marking, transitionCounters);
-        return true;
+        
+        // Retornamos 0 indicando disparo exitoso.
+        return 0;
     }
 
     private void verifyPlaceInvariants() {
-        int[][] invariants = {
-            { 0, 1, 2, 3, 4, 5, 6, 9 },
-            { 2, 3, 4, 7 },
-            { 4, 5, 6, 8 }
-        };
-        int[] expectedSums = { 3, 1, 1 };
-        for (int k = 0; k < invariants.length; k++) {
+        for (int k = 0; k < placeInvariants.length; k++) {
             int sum = 0;
-            for (int idx : invariants[k]) sum += marking[idx];
-            if (sum != expectedSums[k]) {
+            for (int idx : placeInvariants[k][1]) {
+                sum += marking[idx];
+            }
+            if (sum != placeInvariants[k][0][0]) {
                 throw new IllegalStateException("Place invariant violated");
             }
         }

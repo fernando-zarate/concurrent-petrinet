@@ -94,4 +94,6 @@ public class Logger {
             }
         }
     }
+
+    public long getStartingTime() { return startingTime; }
 }
